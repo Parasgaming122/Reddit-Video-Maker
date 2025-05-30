@@ -206,17 +206,27 @@
         let currentAudioFile = '';
 
         async function generateTTS() {
+            console.log('🎵 Generate Audio button clicked');
             const text = document.getElementById('script').value;
             const lang = document.getElementById('tts-lang').value;
             const voice = document.getElementById('tts-voice').value;
             const speed = parseFloat(document.getElementById('tts-speed').value);
 
+            console.log('Audio Settings:', { 
+                textLength: text.length, 
+                lang, 
+                voice, 
+                speed 
+            });
+
             if (!text.trim()) {
+                console.log('❌ Error: No text provided');
                 showError('Please enter a Reddit story');
                 return;
             }
 
             try {
+                console.log('📡 Sending TTS request to server...');
                 const response = await fetch('/generate-tts', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -224,7 +234,10 @@
                 });
 
                 const data = await response.json();
+                console.log('📋 TTS Response:', data);
+                
                 if (data.error) {
+                    console.log('❌ TTS Error:', data.error);
                     showError(data.error);
                     return;
                 }
@@ -234,24 +247,37 @@
                 document.getElementById('audio-preview-container').style.display = 'block';
                 document.getElementById('video-preview-container').style.display = 'none';
                 clearError();
+                console.log('✅ Audio generated successfully:', data.filename);
             } catch (err) {
+                console.log('❌ TTS Fetch Error:', err);
                 showError('Failed to generate audio: ' + err.message);
             }
         }
 
         async function createVideo() {
+            console.log('🎬 Generate Video button clicked');
             const bgFile = document.getElementById('bg-file').files[0];
             if (!bgFile) {
+                console.log('❌ Error: No background file selected');
                 showError('Please select a background file');
                 return;
             }
 
             if (!currentAudioFile) {
+                console.log('❌ Error: No audio file available');
                 showError('Please generate audio first');
                 return;
             }
 
             const originalText = document.getElementById('script').value;
+            
+            console.log('Video Settings:', {
+                backgroundFile: bgFile.name,
+                fileSize: `${(bgFile.size / 1024 / 1024).toFixed(2)} MB`,
+                audioFile: currentAudioFile,
+                aspectRatio: document.getElementById('aspect-ratio').value,
+                textLength: originalText.length
+            });
 
             const formData = new FormData();
             formData.append('bg_file', bgFile);
@@ -263,13 +289,20 @@
             clearError();
 
             try {
+                console.log('📡 Sending video creation request to server...');
                 const response = await fetch('/create-video', {
                     method: 'POST',
                     body: formData
                 });
 
                 const data = await response.json();
+                console.log('📋 Video Response:', data);
+                
                 if (data.error) {
+                    console.log('❌ Video Error:', data.error);
+                    if (data.ffmpeg_error) {
+                        console.log('🔧 FFmpeg Error Details:', data.ffmpeg_error);
+                    }
                     showError(data.error);
                     return;
                 }
@@ -287,16 +320,21 @@
                 if (data.captions) {
                     document.getElementById('caption-text').textContent = data.captions;
                     document.getElementById('caption-info').style.display = 'block';
+                    console.log('📝 Captions generated:', data.captions);
                     
                     if (data.srt_file) {
                         const srtLink = document.getElementById('srt-download');
                         srtLink.href = data.srt_file;
                         srtLink.style.display = 'inline-block';
+                        console.log('📄 SRT file available:', data.srt_file);
                     }
                 } else {
                     document.getElementById('caption-info').style.display = 'none';
                 }
+                
+                console.log('✅ Video generated successfully:', data.video);
             } catch (err) {
+                console.log('❌ Video Fetch Error:', err);
                 showError('Failed to create video: ' + err.message);
             } finally {
                 document.getElementById('loading').style.display = 'none';
