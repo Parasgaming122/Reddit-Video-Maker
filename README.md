@@ -1,7 +1,7 @@
 
 # Reddit Video Maker
 
-A Flask-based web application that converts Reddit stories into engaging videos with text-to-speech narration and customizable backgrounds.
+A Flask-based web application that converts Reddit stories into engaging videos with text-to-speech narration, customizable backgrounds, and automatic caption generation.
 
 ## Features
 
@@ -9,6 +9,8 @@ A Flask-based web application that converts Reddit stories into engaging videos 
 - **Multiple Voice Options**: Support for English (5 variants) and Spanish voices
 - **Speed Control**: Adjust speech speed from 0.5x to 2.0x
 - **Custom Backgrounds**: Use images or videos as background
+- **Auto Caption Generation**: Automatically generate and embed TikTok-style captions synced with voiceover
+- **SRT Export**: Download caption files in SRT format
 - **Aspect Ratio Support**: Create videos in 16:9 (YouTube) or 9:16 (Shorts/Reels) format
 - **Real-time Preview**: Preview audio and video before downloading
 
@@ -37,7 +39,7 @@ The application will start on `http://0.0.0.0:8080`
 
 ### 1. Enter Reddit Story
 - Paste your Reddit story text in the text area
-- The story will be converted to speech using TTS
+- The story will be converted to speech using TTS and used for caption generation
 
 ### 2. Configure Audio Settings
 - **Language**: Choose between English and Spanish
@@ -58,9 +60,26 @@ The application will start on `http://0.0.0.0:8080`
 - **16:9**: Standard YouTube format (1920x1080)
 - **9:16**: Vertical format for Shorts/Reels (1080x1920)
 
-### 6. Create Video
-- Click "Generate Video" to combine audio and background
-- Preview the final video before downloading
+### 6. Create Video with Auto Captions
+- Click "Generate Video" to combine audio, background, and captions
+- Captions are automatically generated from your original text
+- TikTok-style captions (uppercase, bold, centered) are embedded in the video
+- Preview the final video with captions before downloading
+- Download SRT caption files separately if needed
+
+## Caption Features
+
+### Auto Caption Generation
+- Captions are automatically generated from the original Reddit story text
+- Text is intelligently segmented into 3-6 word chunks for optimal readability
+- Timing is calculated based on audio duration for perfect synchronization
+- TikTok-style formatting: uppercase text with bold styling
+
+### Caption Styling
+- **Font**: Bold, uppercase text for maximum readability
+- **Position**: Centered on screen with proper margins
+- **Colors**: White text with black outline and semi-transparent background
+- **Timing**: Precisely synced with voiceover audio
 
 ## API Endpoints
 
@@ -86,23 +105,26 @@ Generate text-to-speech audio from text.
 ```
 
 ### POST `/create-video`
-Create video by combining audio with background.
+Create video by combining audio with background and auto-generated captions.
 
 **Form Data:**
 - `bg_file`: Background image/video file
 - `aspect`: Aspect ratio ("16:9" or "9:16")
 - `audio_filename`: Previously generated audio filename
+- `text`: Original text for caption generation
 
 **Response:**
 ```json
 {
     "video": "/download/video_timestamp.mp4",
-    "aspect": "16:9"
+    "aspect": "16:9",
+    "captions": "Generated X caption segments",
+    "srt_file": "/download/captions_timestamp.srt"
 }
 ```
 
 ### GET `/download/<filename>`
-Download generated audio or video files.
+Download generated audio, video, or SRT caption files.
 
 ## File Structure
 
@@ -112,7 +134,8 @@ reddit-video-maker/
 │   └── index.html          # Main web interface
 ├── uploads/                # Generated files storage
 │   ├── *.mp3              # Audio files
-│   ├── *.mp4              # Video files
+│   ├── *.mp4              # Video files with embedded captions
+│   ├── *.srt              # Caption files
 │   └── bg_*               # Temporary background files
 ├── main.py                # Flask application
 ├── requirements.txt       # Python dependencies
@@ -127,16 +150,24 @@ reddit-video-maker/
 - Speed adjustment implemented with FFmpeg's `atempo` filter
 - Supports speed changes from 0.5x to 2.0x with proper filter chaining
 
+### Caption Processing
+- Intelligent text segmentation for optimal readability
+- Word-count based timing calculation for precise synchronization
+- SRT format generation with proper timestamp formatting
+- FFmpeg subtitle filter integration for embedded captions
+
 ### Video Processing
 - FFmpeg handles video/image processing and composition
 - Automatic scaling and padding to maintain aspect ratios
 - Background videos are looped to match audio duration
 - Images are extended to full audio duration
+- Subtitle overlay with customizable styling
 
 ### File Management
 - Temporary files are automatically cleaned up after processing
 - Unique timestamps prevent filename conflicts
 - Secure filename handling prevents directory traversal
+- SRT files available for separate download
 
 ## Supported File Formats
 
@@ -155,7 +186,8 @@ reddit-video-maker/
 
 ### Output Formats
 - Audio: MP3 (44.1kHz, stereo, AAC)
-- Video: MP4 (H.264, AAC audio)
+- Video: MP4 (H.264, AAC audio) with embedded captions
+- Captions: SRT (SubRip Subtitle format)
 
 ## Configuration
 
@@ -181,19 +213,27 @@ TTS_VOICES = {
 }
 ```
 
+### Caption Settings
+- **Segment Length**: 3-6 words per caption for optimal readability
+- **Font Size**: 32px (16:9) / 36px (9:16) for clear visibility
+- **Styling**: Bold, uppercase, white text with black outline
+- **Position**: Bottom-centered with proper margins
+
 ## Error Handling
 
 The application includes comprehensive error handling for:
 - Missing or invalid input files
 - FFmpeg processing errors
 - Audio duration detection failures
+- Caption generation failures
 - File system operations
 - Network timeouts
 
 ## Performance Considerations
 
 - Audio generation: ~1-2 seconds per 100 words
-- Video processing: ~5-10 seconds for typical Reddit story
+- Caption generation: Near-instantaneous text processing
+- Video processing: ~5-15 seconds for typical Reddit story (including captions)
 - File cleanup: Automatic after each request
 - Memory usage: Minimal (streaming file operations)
 
@@ -214,6 +254,10 @@ The application includes comprehensive error handling for:
 4. **Video processing errors**
    - Ensure background file is valid
    - Check FFmpeg error messages in response
+
+5. **Caption sync issues**
+   - Ensure original text matches the generated audio
+   - Check that text segmentation is working properly
 
 ### Debug Mode
 Enable Flask debug mode for development:
@@ -238,9 +282,12 @@ This project is open source. Feel free to use and modify as needed.
 - **Flask**: Web framework
 - **gTTS**: Google Text-to-Speech
 - **Werkzeug**: WSGI utilities
+- **SpeechRecognition**: Audio processing utilities
+- **pydub**: Audio manipulation library
 - **FFmpeg**: Audio/video processing (system dependency)
 
 ## Version History
 
 - v1.0.0: Initial release with basic TTS and video generation
-- Current: Enhanced UI, multiple voice options, speed control
+- v1.1.0: Added auto caption generation and SRT export
+- Current: Enhanced UI, multiple voice options, speed control, TikTok-style captions
