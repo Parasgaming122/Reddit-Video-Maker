@@ -121,6 +121,12 @@
                             </select>
                         </div>
 
+                        <!-- Caption Info -->
+                        <div class="alert alert-info">
+                            <span class="material-icons align-middle">closed_caption</span>
+                            <strong>Auto Captions:</strong> Captions will be automatically generated and embedded in your video
+                        </div>
+
                         <button class="btn btn-primary w-100 py-2" onclick="createVideo()">
                             <span class="material-icons align-middle">movie</span> Generate Video
                         </button>
@@ -141,6 +147,17 @@
                             </div>
                             <div id="video-preview-container" style="display: none;">
                                 <video id="video-preview" controls class="w-100 rounded"></video>
+                                <div id="caption-info" class="mt-2" style="display: none;">
+                                    <small class="text-muted">
+                                        <span class="material-icons align-middle" style="font-size: 16px;">closed_caption</span>
+                                        <strong>Generated Captions:</strong> <span id="caption-text"></span>
+                                    </small>
+                                    <br>
+                                    <a id="srt-download" href="#" class="btn btn-sm btn-outline-secondary mt-1" style="display: none;">
+                                        <span class="material-icons align-middle" style="font-size: 16px;">download</span>
+                                        Download SRT File
+                                    </a>
+                                </div>
                             </div>
                             <div id="error" class="alert alert-danger mt-3" style="display: none;"></div>
                         </div>
@@ -234,10 +251,13 @@
                 return;
             }
 
+            const originalText = document.getElementById('script').value;
+
             const formData = new FormData();
             formData.append('bg_file', bgFile);
             formData.append('aspect', document.getElementById('aspect-ratio').value);
             formData.append('audio_filename', currentAudioFile);
+            formData.append('text', originalText); // Pass original text for caption generation
 
             document.getElementById('loading').style.display = 'block';
             clearError();
@@ -257,7 +277,25 @@
                 const videoPlayer = document.getElementById('video-preview');
                 videoPlayer.src = data.video;
                 videoPlayer.style.height = data.aspect === '9:16' ? '500px' : 'auto';
+                
+                // Force reload the video element to prevent caching issues
+                videoPlayer.load();
+                
                 document.getElementById('video-preview-container').style.display = 'block';
+                
+                // Show caption information if available
+                if (data.captions) {
+                    document.getElementById('caption-text').textContent = data.captions;
+                    document.getElementById('caption-info').style.display = 'block';
+                    
+                    if (data.srt_file) {
+                        const srtLink = document.getElementById('srt-download');
+                        srtLink.href = data.srt_file;
+                        srtLink.style.display = 'inline-block';
+                    }
+                } else {
+                    document.getElementById('caption-info').style.display = 'none';
+                }
             } catch (err) {
                 showError('Failed to create video: ' + err.message);
             } finally {
