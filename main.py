@@ -106,20 +106,20 @@ def generate_captions_from_text(text, audio_duration):
         # Split text into words for better timing calculation
         words = text.split()
         total_words = len(words)
-        
+
         if total_words == 0:
             return None, "No text to generate captions"
-        
+
         # Calculate words per second based on audio duration
         words_per_second = total_words / audio_duration
-        
+
         # Create segments of 3-6 words for TikTok-style captions
         segments = []
         current_segment = []
-        
+
         for i, word in enumerate(words):
             current_segment.append(word)
-            
+
             # Create shorter segments for better readability (3-6 words)
             if (len(current_segment) >= 4 and 
                 (word.endswith(('.', '!', '?', ',')) or len(current_segment) >= 6)):
@@ -129,11 +129,11 @@ def generate_captions_from_text(text, audio_duration):
             elif len(current_segment) >= 6:
                 segments.append(' '.join(current_segment))
                 current_segment = []
-        
+
         # Add remaining words
         if current_segment:
             segments.append(' '.join(current_segment))
-        
+
         # Calculate timing for each segment based on word count
         def format_time(seconds):
             hours = int(seconds // 3600)
@@ -141,30 +141,30 @@ def generate_captions_from_text(text, audio_duration):
             secs = int(seconds % 60)
             millis = int((seconds % 1) * 1000)
             return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
-        
+
         # Create SRT content with proper timing
         srt_content = ""
         current_word_index = 0
-        
+
         for i, segment in enumerate(segments):
             segment_words = segment.split()
             words_in_segment = len(segment_words)
-            
+
             # Calculate start and end times based on word position
             start_time = current_word_index / words_per_second
             end_time = (current_word_index + words_in_segment) / words_per_second
-            
+
             # Ensure we don't exceed audio duration
             end_time = min(end_time, audio_duration)
-            
+
             srt_content += f"{i + 1}\n"
             srt_content += f"{format_time(start_time)} --> {format_time(end_time)}\n"
             srt_content += f"{segment.upper()}\n\n"  # Uppercase for TikTok style
-            
+
             current_word_index += words_in_segment
-        
+
         return srt_content, f"Generated {len(segments)} caption segments"
-        
+
     except Exception as e:
         return None, f"Caption generation error: {e}"
 
@@ -221,21 +221,21 @@ def create_video():
         srt_content = None
         caption_text = None
         srt_path = None
-        
+
         if original_text.strip():
             srt_content, caption_text = generate_captions_from_text(original_text, duration)
             if srt_content:
                 srt_path = os.path.join(UPLOAD_FOLDER, f'captions_{timestamp}.srt')
                 with open(srt_path, 'w', encoding='utf-8') as f:
                     f.write(srt_content)
-        
+
         # Step 4: Create video with proper audio mapping and captions
         ext = os.path.splitext(bg_filename)[1].lower()
         is_image = ext in ['.jpg', '.jpeg', '.png', '.bmp', '.gif', '.webp']
         scale_filter = (
             'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2'
             if aspect_ratio == '9:16' else 'scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2')
-        
+
         # Create video with or without captions
         if srt_path and os.path.exists(srt_path):
             # Font settings for TikTok-style captions
@@ -245,11 +245,11 @@ def create_video():
             else:
                 font_size = 36
                 margin_v = 80
-                
+
             # Escape the SRT path for FFmpeg
             srt_path_escaped = srt_path.replace('\\', '\\\\').replace(':', '\\:')
             subtitle_filter = f"subtitles='{srt_path_escaped}':force_style='Fontsize={font_size},PrimaryColour=&Hffffff,OutlineColour=&H000000,BackColour=&H80000000,Outline=3,Shadow=2,Alignment=2,MarginV={margin_v},Bold=1'"
-            
+
             if is_image:
                 cmd = [
                     'ffmpeg', '-y', '-loop', '1', '-framerate', '30', '-t',
